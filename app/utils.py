@@ -1,9 +1,12 @@
+# region Imports
+
 import logging
 import os
 from pathlib import Path
 import uuid
 import hashlib
 
+# endregion
 
 LOG_DIR = Path(__file__).parent
 LOG_PATH = LOG_DIR / 'logging' / 'app.log'
@@ -24,12 +27,12 @@ def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 
-def get_mac_address(self) -> str:
+def get_mac_address() -> str:
     mac = uuid.getnode()
     return ':'.join(('%012X' % mac)[i:i+2] for i in range(0, 12, 2))
 
 
-def clear_console():
+def clear_console() -> None:
     if os.name == 'nt':
         os.system('cls')
     else:
