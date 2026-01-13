@@ -3,6 +3,7 @@
 from typing import Generator
 from classes.member import Member
 from utils import logging, get_mac_address, hash_password, clear_console
+from utils import validate_password, validate_username, validate_workouts
 import json
 from pathlib import Path
 from typing import Generator
@@ -11,21 +12,55 @@ from typing import Generator
 
 
 class System:
+    WORKOUT_TO_MARK = 1
+
+
     def __init__(self, f_path: Path):
         self.f_path = f_path
         self.__gym_data = self.load_from_file()
 
     
     @property
-    def gym_data(self) -> dict:
+    def _gym_data(self) -> dict:
         return self.__gym_data
 
 
-    def entrance(self) -> None:
+    def _handle_register(self, category: str) -> None:
         while True:
             try:
 
-                whats_user = int(input("1 - Member\n"
+                name = input("Write your name(3-10 letters): ")
+                if validate_username(name):
+                    print("Len of your name is not valid")
+                    continue
+                password = input("Input your password(6-24 letters): ")
+                if validate_password(password):
+                    print("Your password is so short or so long")
+                    continue
+                workouts = int(input("Enter the number of workouts(1-10): "))
+                if validate_workouts(workouts):
+                    print("Not acceptable number of workouts")
+                    continue
+
+                break
+            except ValueError:
+                clear_console()
+                print("Enter a number")
+
+        self.sign_up(category, name, password, workouts)
+
+
+    def _handle_login(self, category: str) -> None:
+        login = input("Input your login: ")
+        password = input("Enter password: ")
+        self.sign_in(category, login, password)
+
+
+    def _get_role_and_action(self) -> tuple[int, int]:
+        while True:
+            try:
+
+                user_type = int(input("1 - Member\n"
                         "2 - Admin\n"
                         "Your option: "))
                 
@@ -38,47 +73,29 @@ class System:
                 clear_console()
                 print('Enter correct option')
 
+        return user_type, choice
+
+
+    def entrance(self) -> None:
+        user_type, choice = self._get_role_and_action()
         clear_console()
-        match whats_user:
+
+        match user_type:
             case 1:
+
                 category = 'members'
-
                 if choice == 1:
-                    while True:
-                        try:
-
-                            name = input("Write your name(3-10 letters): ")
-                            if len(name) < 3 or len(name) > 10:
-                                print("Len of your name is not valid")
-                            password = input("Input your password(6-24 letters): ")
-                            if len(password) < 6 or len(password) > 24:
-                                print("Your password is so short or so long")
-                            workouts = int(input("Enter the number of workouts(1-10): "))
-                            if workouts < 1 or workouts > 10:
-                                print("Not acceptable number of workouts")
-
-                            break
-                        except ValueError:
-                            clear_console()
-                            print("Enter a number")
-
-                    self.sign_up(category, name, password, workouts)
-
+                    self._handle_register(category)
                 else:
-                    login = input("Input your login: ")
-                    password = input("Enter password: ")
-                    self.sign_in(category, login, password)
+                    self._handle_login(category)
 
             case 2:
-                category = 'admins'
 
+                category = 'admins'
                 if choice == 1:
                     print("Ask to Headmaster for add you as admin")
-
                 else:
-                    login = input("Input your login: ")
-                    password = input("Enter password: ")
-                    self.sign_in(category, login, password)
+                    self._handle_login(category)
             
             case _:
                 print("Not valid command")
@@ -89,22 +106,22 @@ class System:
         member = Member(login, hashed_pass, workouts, "good", "low")
         member_data = member.gather_info()
 
-        self.gym_data[category]['logins'][member.name] = member_data
+        self._gym_data[category]['logins'][member.name] = member_data
         logging.info(f'| {login} | is registered')
-        self.save_to_json(self.gym_data)
+        self.save_to_json(self._gym_data)
         
 
     def sign_in(self, category: str, login: str, password: str) -> None:
         clear_console()
-        whoisthis = f"{category.upper()[:-1]}"
-        logging.info(f"Login attempt from {get_mac_address()} | {whoisthis}")
+        user_role = f"{category.upper()[:-1]}"
+        logging.info(f"Login attempt from {get_mac_address()} | {user_role}")
         input_hash = hash_password(password)
 
-        if login in self.gym_data[category]['logins']:
-            stored_hash = self.gym_data[category]['logins'][login]['password']
+        if login in self._gym_data[category]['logins']:
+            stored_hash = self._gym_data[category]['logins'][login]['password']
             if input_hash == stored_hash:
                 print(f"User: {login}")
-                for key, value in self.gym_data[category]['logins'][login].items():
+                for key, value in self._gym_data[category]['logins'][login].items():
                     if key == "password":
                         continue
                     print(f"{key}: {value}")
@@ -157,12 +174,12 @@ class System:
     
     def browse_users(self) -> Generator[tuple[str, dict], None, str]:
         clear_console()
-        for user in self.gym_data['members']['logins']:
+        for user in self._gym_data['members']['logins']:
             print()
             print(f'Login: {user}')
-            for key, value in self.gym_data['members']['logins'][user].items():
+            for key, value in self._gym_data['members']['logins'][user].items():
                 print(f'{key}: {value}')
-            yield (user, self.gym_data['members']['logins'][user])
+            yield (user, self._gym_data['members']['logins'][user])
         return "User\'s list ended"
 
 
@@ -189,9 +206,13 @@ class System:
                 while True:
                     try:
 
-                        count = int(input("Enter the number of workouts: "))
-                        self.gym_data['members']['logins'][user_login]['workouts'] += count
-                        logging.info(f'{user_login} gained {count} workouts')
+                        workouts = int(input("Enter the number of workouts(max 10): "))
+                        if validate_workouts(workouts):
+                            self._gym_data['members']['logins'][user_login]['workouts'] += workouts
+                            logging.info(f'{user_login} gained {workouts} workouts')
+                        else:
+                            print("You can't add more than 10 workouts at once")
+                            continue
 
                         break
                     except ValueError:
@@ -200,9 +221,13 @@ class System:
                 while True:
                     try:
                         
-                        count = int(input("Enter the number of workouts: "))
-                        self.gym_data['members']['logins'][user_login]['workouts'] -= count
-                        logging.info(f'{user_login} lost {count} workouts')
+                        workouts = int(input("Enter the number of workouts: "))
+                        if workouts == self.WORKOUT_TO_MARK:
+                            self._gym_data['members']['logins'][user_login]['workouts'] -= workouts
+                            logging.info(f'{user_login} lost {workouts} workouts')
+                        else:
+                            print("You can mark only one workout")
+                            continue
 
                         break
                     except ValueError:
@@ -212,7 +237,7 @@ class System:
             case _:
                 print('Unknown command')
         
-        self.save_to_json(self.gym_data)
+        self.save_to_json(self._gym_data)
 
 
     def load_from_file(self) -> dict:

@@ -15,6 +15,11 @@ DATA_DIR = Path(__file__).parent
 DATA_PATH = DATA_DIR / 'userdata' / 'data.json'
 
 
+NAME_MIN_LEN, NAME_MAX_LEN = 3, 10
+PASSWORD_MIN__LEN, PASSWORD_MAX__LEN = 6, 24
+WORKOUT_MIN_COUNT, WORKOUT_MAX_COUNT = 1, 10
+
+
 logging.basicConfig (
     filename=LOG_PATH,    
     level=logging.INFO,        
@@ -37,3 +42,18 @@ def clear_console() -> None:
         os.system('cls')
     else:
         os.system('clear')
+
+
+def validate_username(name: str) -> bool:
+    """Validates if the username length is between 3 and 10 characters."""
+    return NAME_MIN_LEN <= len(name) <= NAME_MAX_LEN
+
+
+def validate_password(password: str) -> bool:
+    """Validates if the password length is between 6 and 24 characters."""
+    return PASSWORD_MIN__LEN <= len(password) <= PASSWORD_MAX__LEN
+
+
+def validate_workouts(workouts: int) -> bool:
+    """Validates if the workout count is between 1 and 10."""
+    return WORKOUT_MIN_COUNT <= workouts <= WORKOUT_MAX_COUNT
