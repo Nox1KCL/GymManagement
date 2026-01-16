@@ -2,11 +2,9 @@ from classes.gymsystem import System
 from utils import clear_console, DATA_PATH
 
 
-
 def main() -> None:
     clear_console()
     system = System(DATA_PATH)
-    
     system.entrance()
 
 
